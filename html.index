@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Shadow Shift - Ved Games Production</title>
+
+<style>
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial;
+}
+
+body{
+background:#050816;
+overflow:hidden;
+color:white;
+}
+
+canvas{
+display:block;
+background:linear-gradient(#081229,#000);
+}
+
+#ui{
+position:absolute;
+top:10px;
+left:10px;
+z-index:10;
+}
+
+#score{
+font-size:30px;
+font-weight:bold;
+}
+
+#best{
+font-size:18px;
+margin-top:5px;
+}
+
+#power{
+margin-top:8px;
+font-size:16px;
+color:#00ffe5;
+}
+
+#start{
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+text-align:center;
+z-index:20;
+}
+
+button{
+padding:12px 24px;
+border:none;
+border-radius:10px;
+background:#00ffe5;
+font-size:18px;
+font-weight:bold;
+cursor:pointer;
+margin-top:15px;
+}
+
+button:hover{
+transform:scale(1.05);
+}
+
+#tip{
+margin-top:10px;
+font-size:14px;
+opacity:0.8;
+}
+</style>
+</head>
+<body>
+
+<div id="ui">
+<div id="score">0</div>
+<div id="best">Best: 0</div>
+<div id="power">Shadow Mode Ready</div>
+</div>
+
+<div id="start">
+<h1>🌑 SHADOW SHIFT</h1>
+<p>Move between dimensions to survive.</p>
+<p>Blue walls = REALITY</p>
+<p>Purple walls = SHADOW</p>
+<p>Press SPACE to SHIFT DIMENSION</p>
+<button onclick="startGame()">PLAY</button>
+<div id="tip">This gets insanely fast 👀</div>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let gameRunning = false;
+
+let player = {
+x:120,
+y:300,
+size:25,
+vy:0,
+gravity:0.6,
+jump:-10,
+mode:"real"
+};
+
+let obstacles = [];
+let score = 0;
+let speed = 6;
+let frame = 0;
+
+let best = localStorage.getItem("shadowBest") || 0;
+document.getElementById("best").innerText = "Best: " + best;
+
+function startGame(){
+document.getElementById("start").style.display = "none";
+
+player.y = 300;
+player.vy = 0;
+player.mode = "real";
+
+obstacles = [];
+score = 0;
+speed = 6;
+frame = 0;
+
+gameRunning = true;
+loop();
+}
+
+function spawnObstacle(){
+
+let type = Math.random() > 0.5 ? "real" : "shadow";
+
+let gap = 170;
+
+let topH = Math.random() * (canvas.height - 300) + 50;
+
+obstacles.push({
+x:canvas.width,
+top:topH,
+bottom:canvas.height - topH - gap,
+type:type,
+passed:false
+});
+
+}
+
+function drawPlayer(){
+
+ctx.beginPath();
+
+if(player.mode === "real"){
+ctx.fillStyle = "#00d4ff";
+ctx.shadowColor = "#00d4ff";
+}else{
+ctx.fillStyle = "#d000ff";
+ctx.shadowColor = "#d000ff";
+}
+
+ctx.shadowBlur = 20;
+
+ctx.arc(player.x, player.y, player.size, 0, Math.PI*2);
+
+ctx.fill();
+
+ctx.shadowBlur = 0;
+
+}
+
+function drawObstacle(obs){
+
+if(obs.type === "real"){
+ctx.fillStyle = "#00d4ff";
+}else{
+ctx.fillStyle = "#d000ff";
+}
+
+ctx.fillRect(obs.x,0,70,obs.top);
+
+ctx.fillRect(
+obs.x,
+canvas.height - obs.bottom,
+70,
+obs.bottom
+);
+
+}
+
+function update(){
+
+frame++;
+
+player.vy += player.gravity;
+player.y += player.vy;
+
+if(frame % 90 === 0){
+spawnObstacle();
+}
+
+for(let i=0;i<obstacles.length;i++){
+
+let obs = obstacles[i];
+
+obs.x -= speed;
+
+drawObstacle(obs);
+
+if(
+player.x + player.size > obs.x &&
+player.x - player.size < obs.x + 70
+){
+
+if(player.mode === obs.type){
+
+if(
+player.y - player.size < obs.top ||
+player.y + player.size >
+canvas.height - obs.bottom
+){
+gameOver();
+}
+
+}
+
+}
+
+if(!obs.passed && obs.x < player.x){
+obs.passed = true;
+score++;
+
+document.getElementById("score").innerText = score;
+
+if(score > best){
+best = score;
+localStorage.setItem("shadowBest",best);
+document.getElementById("best").innerText =
+"Best: " + best;
+}
+
+if(score % 5 === 0){
+speed += 0.5;
+}
+
+}
+
+}
+
+obstacles = obstacles.filter(o => o.x > -100);
+
+if(player.y > canvas.height || player.y < 0){
+gameOver();
+}
+
+}
+
+function gameOver(){
+
+gameRunning = false;
+
+document.getElementById("start").style.display = "block";
+
+document.querySelector("#start h1").innerText =
+"💀 GAME OVER";
+
+document.querySelector("#start p").innerText =
+"Score: " + score;
+
+}
+
+function drawBackground(){
+
+ctx.fillStyle = "rgba(255,255,255,0.03)";
+
+for(let i=0;i<80;i++){
+
+ctx.beginPath();
+
+ctx.arc(
+(i*97 + frame*0.3)%canvas.width,
+(i*61)%canvas.height,
+2,
+0,
+Math.PI*2
+);
+
+ctx.fill();
+
+}
+
+}
+
+function loop(){
+
+if(!gameRunning) return;
+
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+drawBackground();
+
+update();
+
+drawPlayer();
+
+requestAnimationFrame(loop);
+
+}
+
+window.addEventListener("keydown", e=>{
+
+if(e.code === "Space"){
+
+e.preventDefault();
+
+player.mode =
+player.mode === "real" ? "shadow" : "real";
+
+player.vy = player.jump;
+
+document.getElementById("power").innerText =
+player.mode === "real"
+? "Reality Mode"
+: "Shadow Mode";
+
+}
+
+});
+
+</script>
+
+</body>
+</html>
