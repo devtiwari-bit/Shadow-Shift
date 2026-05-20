@@ -3,38 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="google-site-verification" content="lWj1SJEMwzx8-Du4kVNx6Q-MwCpx8_rDB4k-ImuEpmU" />
-
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Shadow Shift X - Ved Games Production</title>
-
-<link rel="icon" type="image/png" href="favicon.png">
-
-<meta name="description" content="Play Shadow Shift X online free by Ved Games Production. Switch dimensions and survive in this addictive neon arcade game!">
-
-<!-- Open Graph (WhatsApp / Instagram / Facebook preview) -->
-
-<meta property="og:title" content="Shadow Shift X - Ved Games Production">
-
-<meta property="og:description" content="Play Shadow Shift X online free. Switch dimensions and survive in this addictive neon arcade game.">
-
-<meta property="og:image" content="https://devtiwari-bit.github.io/Shadow-Shift/preview.png">
-
-<meta property="og:url" content="https://devtiwari-bit.github.io/Shadow-Shift/">
-
-<meta property="og:type" content="website">
-
-<!-- Twitter Preview -->
-
-<meta name="twitter:card" content="summary_large_image">
-
-<meta name="twitter:title" content="Shadow Shift X - Ved Games Production">
-
-<meta name="twitter:description" content="Play Shadow Shift X online free browser game.">
-
-<meta name="twitter:image" content="https://devtiwari-bit.github.io/Shadow-Shift/preview.png">
 
 <style>
 
@@ -141,13 +110,12 @@ font-weight:bold;
 color:white;
 z-index:100;
 display:none;
-animation:zoom 1s ease;
 text-shadow:
 0 0 20px #00ffe5,
 0 0 50px #00ffe5;
 }
 
-/* COOL CREDIT */
+/* CREDIT */
 
 #credits{
 position:absolute;
@@ -211,20 +179,6 @@ transform:translate(-50%,-50%) scale(1);
 
 }
 
-@keyframes zoom{
-
-from{
-transform:translate(-50%,-50%) scale(0.3);
-opacity:0;
-}
-
-to{
-transform:translate(-50%,-50%) scale(1);
-opacity:1;
-}
-
-}
-
 </style>
 </head>
 
@@ -280,52 +234,6 @@ const ctx = canvas.getContext("2d");
 canvas.width = innerWidth;
 canvas.height = innerHeight;
 
-/* SOUND */
-
-let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-function playBeep(freq,duration){
-
-let osc = audioCtx.createOscillator();
-let gain = audioCtx.createGain();
-
-osc.connect(gain);
-gain.connect(audioCtx.destination);
-
-osc.frequency.value = freq;
-osc.type = "sine";
-
-osc.start();
-
-gain.gain.setValueAtTime(0.1,audioCtx.currentTime);
-
-gain.gain.exponentialRampToValueAtTime(
-0.0001,
-audioCtx.currentTime + duration
-);
-
-osc.stop(audioCtx.currentTime + duration);
-
-}
-
-function playMusic(){
-
-setInterval(()=>{
-
-if(gameRunning){
-
-playBeep(220,0.2);
-
-setTimeout(()=>playBeep(330,0.2),200);
-
-setTimeout(()=>playBeep(440,0.2),400);
-
-}
-
-},800);
-
-}
-
 /* GAME */
 
 let gameRunning = false;
@@ -359,6 +267,64 @@ document.getElementById("best").innerText =
 document.getElementById("coins").innerText =
 "Coins: " + coins;
 
+/* SOFT MUSIC */
+
+let audioCtx =
+new (window.AudioContext || window.webkitAudioContext)();
+
+let bgStarted = false;
+
+function playBackgroundMusic(){
+
+if(bgStarted) return;
+
+bgStarted = true;
+
+function ambientLoop(){
+
+if(!gameRunning) return;
+
+let osc1 = audioCtx.createOscillator();
+let gain1 = audioCtx.createGain();
+
+osc1.type = "sine";
+osc1.frequency.value = 220;
+
+gain1.gain.value = 0.015;
+
+osc1.connect(gain1);
+gain1.connect(audioCtx.destination);
+
+osc1.start();
+
+let osc2 = audioCtx.createOscillator();
+let gain2 = audioCtx.createGain();
+
+osc2.type = "triangle";
+osc2.frequency.value = 330;
+
+gain2.gain.value = 0.01;
+
+osc2.connect(gain2);
+gain2.connect(audioCtx.destination);
+
+osc2.start();
+
+setTimeout(()=>{
+
+osc1.stop();
+osc2.stop();
+
+},900);
+
+setTimeout(ambientLoop,1000);
+
+}
+
+ambientLoop();
+
+}
+
 /* COUNTDOWN */
 
 function startCountdown(){
@@ -383,13 +349,9 @@ if(count > 0){
 
 countdown.innerText = count;
 
-playBeep(500,0.2);
-
 }else if(count === 0){
 
 countdown.innerText = "GO!";
-
-playBeep(800,0.4);
 
 }else{
 
@@ -405,6 +367,8 @@ startGame();
 
 }
 
+/* START GAME */
+
 function startGame(){
 
 score = 0;
@@ -419,7 +383,7 @@ particles = [];
 
 gameRunning = true;
 
-playMusic();
+playBackgroundMusic();
 
 loop();
 
@@ -732,8 +696,6 @@ player.mode === "real"
 : "#d000ff";
 
 createParticles();
-
-playBeep(700,0.08);
 
 }
 
