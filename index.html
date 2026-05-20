@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shadow Shift X - Ved Games Production</title>
+
+<style>
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial;
+}
+
+body{
+overflow:hidden;
+background:black;
+color:white;
+}
+
+canvas{
+display:block;
+background:linear-gradient(to bottom,#050816,#000);
+}
+
+#ui{
+position:absolute;
+top:10px;
+left:10px;
+z-index:10;
+}
+
+#score{
+font-size:35px;
+font-weight:bold;
+}
+
+#best{
+font-size:18px;
+margin-top:5px;
+}
+
+#coins{
+font-size:18px;
+margin-top:5px;
+color:gold;
+}
+
+#rank{
+font-size:18px;
+margin-top:5px;
+color:#00ffe5;
+}
+
+#menu{
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+text-align:center;
+z-index:20;
+}
+
+button{
+padding:12px 24px;
+margin-top:15px;
+border:none;
+border-radius:12px;
+font-size:18px;
+font-weight:bold;
+cursor:pointer;
+background:#00ffe5;
+}
+
+button:hover{
+transform:scale(1.05);
+}
+
+.shop{
+margin-top:10px;
+font-size:16px;
+}
+
+</style>
+</head>
+<body>
+
+<div id="ui">
+<div id="score">0</div>
+<div id="best">Best: 0</div>
+<div id="coins">Coins: 0</div>
+<div id="rank">Rank: Beginner</div>
+</div>
+
+<div id="menu">
+<h1>🌑 SHADOW SHIFT X</h1>
+<p>SPACE = Shift Dimension + Jump</p>
+<p>Avoid walls of your own dimension.</p>
+<button onclick="startGame()">PLAY</button>
+
+<div class="shop">
+<button onclick="buySkin()">Buy Random Skin (50 Coins)</button>
+</div>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let gameRunning = false;
+
+let player = {
+x:150,
+y:300,
+size:22,
+vy:0,
+gravity:0.6,
+jump:-10,
+mode:"real",
+color:"#00d4ff"
+};
+
+let obstacles = [];
+let particles = [];
+let coinsObj = [];
+
+let score = 0;
+let speed = 6;
+let frame = 0;
+let combo = 0;
+
+let best = localStorage.getItem("best") || 0;
+let coins = parseInt(localStorage.getItem("coins")) || 0;
+
+document.getElementById("best").innerText = "Best: " + best;
+document.getElementById("coins").innerText = "Coins: " + coins;
+
+function startGame(){
+
+document.getElementById("menu").style.display = "none";
+
+player.y = 300;
+player.vy = 0;
+player.mode = "real";
+
+score = 0;
+speed = 6;
+frame = 0;
+combo = 0;
+
+obstacles = [];
+particles = [];
+coinsObj = [];
+
+gameRunning = true;
+
+loop();
+
+}
+
+function spawnObstacle(){
+
+let type = Math.random() > 0.5 ? "real" : "shadow";
+
+let gap = 180;
+
+let topH = Math.random() * (canvas.height - 350) + 50;
+
+obstacles.push({
+x:canvas.width,
+top:topH,
+bottom:canvas.height - topH - gap,
+type:type,
+passed:false
+});
+
+if(Math.random() > 0.5){
+
+coinsObj.push({
+x:canvas.width + 100,
+y:Math.random() * (canvas.height - 200) + 100,
+size:10
+});
+
+}
+
+}
+
+function drawPlayer(){
+
+ctx.beginPath();
+
+ctx.fillStyle = player.color;
+
+ctx.shadowColor = player.color;
+ctx.shadowBlur = 25;
+
+ctx.arc(player.x,player.y,player.size,0,Math.PI*2);
+
+ctx.fill();
+
+ctx.shadowBlur = 0;
+
+}
+
+function drawObstacle(obs){
+
+ctx.fillStyle =
+obs.type === "real"
+? "#00d4ff"
+: "#d000ff";
+
+ctx.fillRect(obs.x,0,70,obs.top);
+
+ctx.fillRect(
+obs.x,
+canvas.height - obs.bottom,
+70,
+obs.bottom
+);
+
+}
+
+function drawCoins(c){
+
+ctx.beginPath();
+
+ctx.fillStyle = "gold";
+
+ctx.arc(c.x,c.y,c.size,0,Math.PI*2);
+
+ctx.fill();
+
+}
+
+function createParticles(){
+
+for(let i=0;i<10;i++){
+
+particles.push({
+x:player.x,
+y:player.y,
+vx:(Math.random()-0.5)*6,
+vy:(Math.random()-0.5)*6,
+life:30,
+size:Math.random()*4+2
+});
+
+}
+
+}
+
+function updateParticles(){
+
+for(let p of particles){
+
+p.x += p.vx;
+p.y += p.vy;
+p.life--;
+
+ctx.fillStyle = player.color;
+
+ctx.fillRect(p.x,p.y,p.size,p.size);
+
+}
+
+particles = particles.filter(p=>p.life>0);
+
+}
+
+function update(){
+
+frame++;
+
+player.vy += player.gravity;
+player.y += player.vy;
+
+if(frame % 85 === 0){
+spawnObstacle();
+}
+
+for(let obs of obstacles){
+
+obs.x -= speed;
+
+drawObstacle(obs);
+
+if(
+player.x + player.size > obs.x &&
+player.x - player.size < obs.x + 70
+){
+
+if(player.mode === obs.type){
+
+if(
+player.y - player.size < obs.top ||
+player.y + player.size >
+canvas.height - obs.bottom
+){
+gameOver();
+}
+
+}
+
+}
+
+if(!obs.passed && obs.x < player.x){
+
+obs.passed = true;
+
+score++;
+
+combo++;
+
+document.getElementById("score").innerText =
+score + " 🔥" + combo;
+
+if(score > best){
+
+best = score;
+
+localStorage.setItem("best",best);
+
+document.getElementById("best").innerText =
+"Best: " + best;
+
+}
+
+if(score % 5 === 0){
+speed += 0.6;
+}
+
+updateRank();
+
+}
+
+}
+
+for(let c of coinsObj){
+
+c.x -= speed;
+
+drawCoins(c);
+
+let dx = player.x - c.x;
+let dy = player.y - c.y;
+
+let dist = Math.sqrt(dx*dx + dy*dy);
+
+if(dist < player.size + c.size){
+
+coins += 10;
+
+localStorage.setItem("coins",coins);
+
+document.getElementById("coins").innerText =
+"Coins: " + coins;
+
+c.collected = true;
+
+}
+
+}
+
+coinsObj = coinsObj.filter(c=>!c.collected && c.x>-50);
+
+obstacles = obstacles.filter(o=>o.x>-100);
+
+if(player.y > canvas.height || player.y < 0){
+gameOver();
+}
+
+}
+
+function updateRank(){
+
+let rank = "Beginner";
+
+if(score > 10) rank = "Pro Gamer";
+if(score > 25) rank = "Shadow Master";
+if(score > 50) rank = "Dimension God";
+
+document.getElementById("rank").innerText =
+"Rank: " + rank;
+
+}
+
+function gameOver(){
+
+gameRunning = false;
+
+createParticles();
+
+document.getElementById("menu").style.display = "block";
+
+document.querySelector("#menu h1").innerText =
+"💀 GAME OVER";
+
+}
+
+function drawBackground(){
+
+for(let i=0;i<70;i++){
+
+ctx.fillStyle = "rgba(255,255,255,0.08)";
+
+ctx.beginPath();
+
+ctx.arc(
+(i*97 + frame*0.4)%canvas.width,
+(i*51)%canvas.height,
+2,
+0,
+Math.PI*2
+);
+
+ctx.fill();
+
+}
+
+}
+
+function loop(){
+
+if(!gameRunning) return;
+
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+drawBackground();
+
+update();
+
+updateParticles();
+
+drawPlayer();
+
+requestAnimationFrame(loop);
+
+}
+
+window.addEventListener("keydown",e=>{
+
+if(e.code === "Space"){
+
+e.preventDefault();
+
+player.mode =
+player.mode === "real"
+? "shadow"
+: "real";
+
+player.vy = player.jump;
+
+player.color =
+player.mode === "real"
+? "#00d4ff"
+: "#d000ff";
+
+createParticles();
+
+}
+
+});
+
+window.addEventListener("touchstart",()=>{
+
+player.mode =
+player.mode === "real"
+? "shadow"
+: "real";
+
+player.vy = player.jump;
+
+player.color =
+player.mode === "real"
+? "#00d4ff"
+: "#d000ff";
+
+createParticles();
+
+});
+
+function buySkin(){
+
+if(coins >= 50){
+
+coins -= 50;
+
+localStorage.setItem("coins",coins);
+
+document.getElementById("coins").innerText =
+"Coins: " + coins;
+
+let colors = [
+"#ff004c",
+"#00ff99",
+"#ffcc00",
+"#ffffff",
+"#ff00ff"
+];
+
+player.color =
+colors[Math.floor(Math.random()*colors.length)];
+
+alert("New Skin Unlocked!");
+
+}else{
+
+alert("Not enough coins!");
+
+}
+
+}
+
+</script>
+
+</body>
+</html>
