@@ -96,7 +96,24 @@ box-shadow:0 0 25px rgba(0,255,255,0.5);
 
 button:hover{
 transform:scale(1.08);
-box-shadow:0 0 35px rgba(0,255,255,0.9);
+}
+
+/* COUNTDOWN */
+
+#countdown{
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+font-size:120px;
+font-weight:bold;
+color:white;
+z-index:100;
+display:none;
+animation:zoom 1s ease;
+text-shadow:
+0 0 20px #00ffe5,
+0 0 50px #00ffe5;
 }
 
 /* COOL CREDIT */
@@ -163,6 +180,20 @@ transform:translate(-50%,-50%) scale(1);
 
 }
 
+@keyframes zoom{
+
+from{
+transform:translate(-50%,-50%) scale(0.3);
+opacity:0;
+}
+
+to{
+transform:translate(-50%,-50%) scale(1);
+opacity:1;
+}
+
+}
+
 </style>
 </head>
 
@@ -196,11 +227,13 @@ Beginner
 
 <p>Switch dimensions to survive.</p>
 
-<button onclick="startGame()">
+<button onclick="startCountdown()">
 PLAY
 </button>
 
 </div>
+
+<div id="countdown">3</div>
 
 <canvas id="game"></canvas>
 
@@ -215,6 +248,54 @@ const ctx = canvas.getContext("2d");
 
 canvas.width = innerWidth;
 canvas.height = innerHeight;
+
+/* SOUND */
+
+let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playBeep(freq,duration){
+
+let osc = audioCtx.createOscillator();
+let gain = audioCtx.createGain();
+
+osc.connect(gain);
+gain.connect(audioCtx.destination);
+
+osc.frequency.value = freq;
+osc.type = "sine";
+
+osc.start();
+
+gain.gain.setValueAtTime(0.1,audioCtx.currentTime);
+
+gain.gain.exponentialRampToValueAtTime(
+0.0001,
+audioCtx.currentTime + duration
+);
+
+osc.stop(audioCtx.currentTime + duration);
+
+}
+
+function playMusic(){
+
+setInterval(()=>{
+
+if(gameRunning){
+
+playBeep(220,0.2);
+
+setTimeout(()=>playBeep(330,0.2),200);
+
+setTimeout(()=>playBeep(440,0.2),400);
+
+}
+
+},800);
+
+}
+
+/* GAME */
 
 let gameRunning = false;
 
@@ -247,10 +328,53 @@ document.getElementById("best").innerText =
 document.getElementById("coins").innerText =
 "Coins: " + coins;
 
-function startGame(){
+/* COUNTDOWN */
+
+function startCountdown(){
 
 document.getElementById("menu").style.display =
 "none";
+
+let count = 3;
+
+let countdown =
+document.getElementById("countdown");
+
+countdown.style.display = "block";
+
+countdown.innerText = count;
+
+let timer = setInterval(()=>{
+
+count--;
+
+if(count > 0){
+
+countdown.innerText = count;
+
+playBeep(500,0.2);
+
+}else if(count === 0){
+
+countdown.innerText = "GO!";
+
+playBeep(800,0.4);
+
+}else{
+
+clearInterval(timer);
+
+countdown.style.display = "none";
+
+startGame();
+
+}
+
+},1000);
+
+}
+
+function startGame(){
 
 score = 0;
 speed = 6;
@@ -263,6 +387,8 @@ obstacles = [];
 particles = [];
 
 gameRunning = true;
+
+playMusic();
 
 loop();
 
@@ -323,12 +449,7 @@ obs.type === "real"
 ? "#00d4ff"
 : "#d000ff";
 
-ctx.fillRect(
-obs.x,
-0,
-70,
-obs.top
-);
+ctx.fillRect(obs.x,0,70,obs.top);
 
 ctx.fillRect(
 obs.x,
@@ -580,6 +701,8 @@ player.mode === "real"
 : "#d000ff";
 
 createParticles();
+
+playBeep(700,0.08);
 
 }
 
